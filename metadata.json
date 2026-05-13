@@ -1,0 +1,6 @@
+{
+  "name": "MSI Medical Monitor (Android)",
+  "description": "Flutter-based medical simulation monitor. Connects via BLE to the MSI Dashboard to display vitals in real-time.",
+  "requestFramePermissions": ["bluetooth"],
+  "majorCapabilities": ["mobile", "ble"]
+}

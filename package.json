@@ -1,0 +1,11 @@
+{
+  "name": "msi-medical-monitor-flutter",
+  "version": "1.0.0",
+  "description": "Flutter project source for MSI Monitor. Note: This environment is for web-dev; build this project locally using Flutter SDK.",
+  "scripts": {
+    "build": "echo 'Run flutter build apk locally'",
+    "dev": "echo 'Run flutter run locally'"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}
