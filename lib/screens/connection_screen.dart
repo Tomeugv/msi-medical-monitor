@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
 import '../providers/monitor_provider.dart';
 import 'monitor_screen.dart';
 
@@ -27,7 +28,8 @@ class ConnectionScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: Colors.white.withOpacity(0.1)),
                 ),
-                child: const Icon(LucideIcons.settings, color: Colors.white70, size: 24),
+                child: const Icon(LucideIcons.settings,
+                    color: Colors.white70, size: 24),
               ),
               const SizedBox(height: 32),
               const Text(
@@ -48,7 +50,6 @@ class ConnectionScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 48),
-              
               Expanded(
                 child: ListView.separated(
                   itemCount: provider.foundDevices.length,
@@ -59,14 +60,13 @@ class ConnectionScreen extends StatelessWidget {
                   },
                 ),
               ),
-
               const SizedBox(height: 24),
-              
               if (provider.isScanning)
                 const Center(
                   child: Padding(
                     padding: EdgeInsets.all(16.0),
-                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                    child: CircularProgressIndicator(
+                        color: Colors.white, strokeWidth: 2),
                   ),
                 )
               else
@@ -80,12 +80,12 @@ class ConnectionScreen extends StatelessWidget {
                       backgroundColor: Colors.white,
                       foregroundColor: Colors.black,
                       padding: const EdgeInsets.symmetric(vertical: 20),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20)),
                       textStyle: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),
-
               if (provider.status == DeviceConnectionState.connected)
                 Padding(
                   padding: const EdgeInsets.only(top: 16.0),
@@ -95,7 +95,8 @@ class ConnectionScreen extends StatelessWidget {
                       onPressed: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => const MonitorScreen()),
+                          MaterialPageRoute(
+                              builder: (_) => const MonitorScreen()),
                         );
                       },
                       icon: const Icon(LucideIcons.activity, size: 20),
@@ -104,7 +105,8 @@ class ConnectionScreen extends StatelessWidget {
                         foregroundColor: Colors.white,
                         side: const BorderSide(color: Colors.white24),
                         padding: const EdgeInsets.symmetric(vertical: 20),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20)),
                       ),
                     ),
                   ),
@@ -125,7 +127,8 @@ class _DeviceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<MonitorProvider>(context, listen: false);
-    final isConnecting = provider.status == DeviceConnectionState.connecting && provider.connectedDeviceId == device.id;
+    final isConnecting = provider.status == DeviceConnectionState.connecting &&
+        provider.connectedDeviceId == device.id;
 
     return InkWell(
       onTap: () => provider.connect(device.id),
@@ -147,7 +150,8 @@ class _DeviceCard extends StatelessWidget {
                 children: [
                   Text(
                     device.name.isEmpty ? 'Unknown Device' : device.name,
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.bold),
                   ),
                   Text(
                     device.id,
@@ -157,9 +161,14 @@ class _DeviceCard extends StatelessWidget {
               ),
             ),
             if (isConnecting)
-              const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white24))
+              const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: Colors.white24))
             else
-              const Icon(LucideIcons.chevronRight, color: Colors.white24, size: 16),
+              const Icon(LucideIcons.chevronRight,
+                  color: Colors.white24, size: 16),
           ],
         ),
       ),

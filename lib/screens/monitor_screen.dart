@@ -28,7 +28,7 @@ class MonitorScreen extends StatelessWidget {
               builder: (context, constraints) {
                 final count = provider.instruments.length;
                 int crossAxisCount = 1;
-                
+
                 if (count > 4) {
                   crossAxisCount = 3;
                 } else if (count > 1) {
@@ -51,7 +51,8 @@ class MonitorScreen extends StatelessWidget {
                   ),
                   itemCount: count,
                   itemBuilder: (context, index) {
-                    return _InstrumentCard(instrument: provider.instruments[index]);
+                    return _InstrumentCard(
+                        instrument: provider.instruments[index]);
                   },
                 );
               },
@@ -92,14 +93,14 @@ class _InstrumentCard extends StatelessWidget {
               ),
             ),
           ),
-          
+
           // Label
           Positioned(
             top: 24,
             left: 24,
             child: Text(
               instrument.label.toUpperCase(),
-              style: GoogleFonts.jetbrainsMono(
+              style: GoogleFonts.jetBrainsMono(
                 color: Colors.white.withOpacity(0.4),
                 fontSize: 10,
                 letterSpacing: 2,
@@ -117,7 +118,7 @@ class _InstrumentCard extends StatelessWidget {
                   fit: BoxFit.scaleDown,
                   child: Text(
                     instrument.value,
-                    style: GoogleFonts.jetbrainsMono(
+                    style: GoogleFonts.jetBrainsMono(
                       color: instrument.color,
                       fontSize: 120, // Responsive via FittedBox
                       fontWeight: FontWeight.w500,
@@ -127,7 +128,7 @@ class _InstrumentCard extends StatelessWidget {
                 ),
                 Text(
                   instrument.unit.toUpperCase(),
-                  style: GoogleFonts.jetbrainsMono(
+                  style: GoogleFonts.jetBrainsMono(
                     color: Colors.white.withOpacity(0.2),
                     fontSize: 16,
                     letterSpacing: 4,
