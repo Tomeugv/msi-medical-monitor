@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../providers/monitor_provider.dart';
+import '../providers/ble_peripheral_provider.dart';
 import '../models/instrument.dart';
 
 class MonitorScreen extends StatelessWidget {
@@ -13,7 +13,7 @@ class MonitorScreen extends StatelessWidget {
       backgroundColor: Colors.black,
       body: GestureDetector(
         onDoubleTap: () => Navigator.pop(context),
-        child: Consumer<MonitorProvider>(
+        child: Consumer<BLEPeripheralProvider>(
           builder: (context, provider, child) {
             if (provider.instruments.isEmpty) {
               return const Center(
@@ -35,7 +35,6 @@ class MonitorScreen extends StatelessWidget {
                   crossAxisCount = 2;
                 }
 
-                // Calculate ratios to fit screen
                 final double itemWidth = constraints.maxWidth / crossAxisCount;
                 final int rowCount = (count / crossAxisCount).ceil();
                 final double itemHeight = constraints.maxHeight / rowCount;
@@ -78,7 +77,6 @@ class _InstrumentCard extends StatelessWidget {
       ),
       child: Stack(
         children: [
-          // Background Glow
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
@@ -93,8 +91,6 @@ class _InstrumentCard extends StatelessWidget {
               ),
             ),
           ),
-
-          // Label
           Positioned(
             top: 24,
             left: 24,
@@ -108,8 +104,6 @@ class _InstrumentCard extends StatelessWidget {
               ),
             ),
           ),
-
-          // Value & Unit
           Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -120,7 +114,7 @@ class _InstrumentCard extends StatelessWidget {
                     instrument.value,
                     style: GoogleFonts.jetBrainsMono(
                       color: instrument.color,
-                      fontSize: 120, // Responsive via FittedBox
+                      fontSize: 120,
                       fontWeight: FontWeight.w500,
                       letterSpacing: -5,
                     ),
@@ -137,8 +131,6 @@ class _InstrumentCard extends StatelessWidget {
               ],
             ),
           ),
-
-          // Trend Indicator (Visual accent)
           const Positioned(
             bottom: 24,
             right: 24,
