@@ -16,7 +16,6 @@ class BLEPeripheralProvider with ChangeNotifier {
   String? _connectedCentralId;
   String? get connectedCentralId => _connectedCentralId;
 
-  // Use lowercase for consistency (Android is case-insensitive but better to match)
   final String serviceUuid = "0000ffe0-0000-1000-8000-00805f9b34fb";
   final String characteristicUuid = "0000ffe1-0000-1000-8000-00805f9b34fb";
 
@@ -24,7 +23,18 @@ class BLEPeripheralProvider with ChangeNotifier {
   bool _isInitialized = false;
 
   BLEPeripheralProvider() {
-    _initBle();
+    _initAndStartAdvertising();
+  }
+
+  // Inicializa BLE y arranca la publicidad automáticamente
+  Future<void> _initAndStartAdvertising() async {
+    await _initBle();
+    // Esperamos un momento para que todo esté listo
+    await Future.delayed(const Duration(milliseconds: 500));
+    // Arrancamos la publicidad si no está ya activa
+    if (!_isAdvertising) {
+      await startAdvertising();
+    }
   }
 
   Future<void> _initBle() async {
@@ -32,7 +42,7 @@ class BLEPeripheralProvider with ChangeNotifier {
     try {
       await BlePeripheral.initialize();
       _isInitialized = true;
-      debugPrint("✅ BLE Peripheral initialized");
+      debugPrint("✅ BLE Peripheral inicializado");
 
       BlePeripheral.setWriteRequestCallback((
         String deviceId,
@@ -41,7 +51,7 @@ class BLEPeripheralProvider with ChangeNotifier {
         Uint8List? value,
       ) {
         debugPrint(
-            "🔥🔥🔥 WRITE REQUEST from $deviceId, char: $characteristicId, size: ${value?.length}");
+            "📩 WRITE REQUEST from $deviceId, char: $characteristicId, size: ${value?.length}");
         if (value != null && value.isNotEmpty) {
           _onDataReceived(value);
         }
@@ -50,7 +60,7 @@ class BLEPeripheralProvider with ChangeNotifier {
 
       BlePeripheral.setConnectionStateChangeCallback(
           (String deviceId, bool connected) {
-        debugPrint("🔗 Connection: $deviceId connected=$connected");
+        debugPrint("🔗 Conexión: $deviceId connected=$connected");
         if (connected) {
           _connectedCentralId = deviceId;
           _buffer.clear();
@@ -60,12 +70,25 @@ class BLEPeripheralProvider with ChangeNotifier {
         notifyListeners();
       });
     } catch (e) {
-      debugPrint("❌ BLE init failed: $e");
+      debugPrint("❌ BLE init falló: $e");
     }
   }
 
+  // Reinicia la publicidad (útil si algo falla)
+  Future<void> restartAdvertising() async {
+    debugPrint("🔄 Reiniciando publicidad...");
+    await stopAdvertising();
+    await Future.delayed(const Duration(milliseconds: 300));
+    await startAdvertising();
+  }
+
   Future<void> startAdvertising() async {
-    debugPrint("🚀 Starting advertising...");
+    if (_isAdvertising) {
+      debugPrint("⚠️ Publicidad ya activa");
+      return;
+    }
+
+    debugPrint("🚀 Iniciando advertising...");
 
     if (!_isInitialized) {
       await _initBle();
@@ -84,12 +107,19 @@ class BLEPeripheralProvider with ChangeNotifier {
         permissions[Permission.location]!.isGranted;
 
     if (!granted) {
-      debugPrint("❌ Missing permissions");
+      debugPrint("❌ Permisos insuficientes para publicidad BLE");
       return;
     }
 
     try {
+      // Detener publicidad anterior si existe
       await BlePeripheral.stopAdvertising();
+      await Future.delayed(const Duration(milliseconds: 200));
+
+      // Limpiar todos los servicios anteriores (evita duplicados)
+      // Nota: removeAllServices puede no existir en tu versión del plugin.
+      // Si no existe, simplemente no lo llames.
+
       await Future.delayed(const Duration(milliseconds: 200));
 
       final characteristic = BleCharacteristic(
@@ -106,7 +136,7 @@ class BLEPeripheralProvider with ChangeNotifier {
       );
 
       await BlePeripheral.addService(bleService);
-      debugPrint("✅ Service added: $serviceUuid, Char: $characteristicUuid");
+      debugPrint("✅ Servicio añadido: $serviceUuid, Char: $characteristicUuid");
 
       await Future.delayed(const Duration(milliseconds: 200));
 
@@ -119,22 +149,26 @@ class BLEPeripheralProvider with ChangeNotifier {
       _buffer.clear();
       _connectedCentralId = null;
       notifyListeners();
-      debugPrint("✅ Advertising as MSI-MONITOR");
+      debugPrint("✅ Publicando como MSI-MONITOR");
     } catch (e) {
-      debugPrint("❌ Failed to start advertising: $e");
+      debugPrint("❌ Error al iniciar advertising: $e");
     }
   }
 
   Future<void> stopAdvertising() async {
+    if (!_isAdvertising) {
+      debugPrint("⚠️ Publicidad ya detenida");
+      return;
+    }
     try {
       await BlePeripheral.stopAdvertising();
       _isAdvertising = false;
       _connectedCentralId = null;
       _buffer.clear();
       notifyListeners();
-      debugPrint("Stopped advertising");
+      debugPrint("Publicidad detenida");
     } catch (e) {
-      debugPrint("Error stopping advertising: $e");
+      debugPrint("Error al detener advertising: $e");
     }
   }
 
@@ -143,14 +177,11 @@ class BLEPeripheralProvider with ChangeNotifier {
       final chunk = utf8.decode(bytes);
       _buffer.write(chunk);
       debugPrint(
-          "📦 Received ${bytes.length} bytes. Buffer length: ${_buffer.length}");
+          "📦 Recibido ${bytes.length} bytes. Buffer: ${_buffer.length}");
 
       final full = _buffer.toString();
       int start = full.indexOf('[');
-      if (start == -1) {
-        debugPrint("No start bracket, waiting...");
-        return;
-      }
+      if (start == -1) return;
 
       int depth = 0;
       int end = -1;
@@ -165,31 +196,30 @@ class BLEPeripheralProvider with ChangeNotifier {
           }
         }
       }
-      if (end == -1) {
-        debugPrint("JSON incomplete, waiting...");
-        return;
-      }
+      if (end == -1) return;
 
       final jsonString = full.substring(start, end + 1);
-      debugPrint("📦 Extracted JSON (${jsonString.length} chars)");
+      debugPrint("📦 JSON extraído (${jsonString.length} chars)");
       try {
         final List<dynamic> jsonList = json.decode(jsonString);
         _instruments = jsonList.map((j) => Instrument.fromJson(j)).toList();
-        debugPrint("✅ Updated ${_instruments.length} instruments");
+        debugPrint("✅ Actualizados ${_instruments.length} instrumentos");
         notifyListeners();
       } catch (e) {
-        debugPrint("❌ Parse error: $e");
+        debugPrint("❌ Error parseando JSON: $e");
       }
       _buffer.clear();
       _buffer.write(full.substring(end + 1));
     } catch (e) {
-      debugPrint("❌ Error: $e");
+      debugPrint("❌ Error procesando datos: $e");
       _buffer.clear();
     }
   }
 
   @override
   void dispose() {
+    // No detenemos publicidad al cerrar la app? El usuario puede decidir,
+    // pero para limpiar recursos lo hacemos.
     BlePeripheral.stopAdvertising();
     super.dispose();
   }

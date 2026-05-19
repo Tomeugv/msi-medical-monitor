@@ -4,30 +4,7 @@
     <option name="autoReloadType" value="NONE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="c1cf9af1-a24e-4689-83b5-c723cb57ff1c" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.dart_tool/flutter_build/9c0b3a9401a090acefff95da10baa049/.filecache" beforeDir="false" afterPath="$PROJECT_DIR$/.dart_tool/flutter_build/9c0b3a9401a090acefff95da10baa049/.filecache" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.dart_tool/flutter_build/9c0b3a9401a090acefff95da10baa049/app.dill" beforeDir="false" afterPath="$PROJECT_DIR$/.dart_tool/flutter_build/9c0b3a9401a090acefff95da10baa049/app.dill" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.dart_tool/flutter_build/9c0b3a9401a090acefff95da10baa049/dart_build_result.json" beforeDir="false" afterPath="$PROJECT_DIR$/.dart_tool/flutter_build/9c0b3a9401a090acefff95da10baa049/dart_build_result.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.dart_tool/flutter_build/9c0b3a9401a090acefff95da10baa049/debug_android_application.stamp" beforeDir="false" afterPath="$PROJECT_DIR$/.dart_tool/flutter_build/9c0b3a9401a090acefff95da10baa049/debug_android_application.stamp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.dart_tool/flutter_build/9c0b3a9401a090acefff95da10baa049/flutter_assets.d" beforeDir="false" afterPath="$PROJECT_DIR$/.dart_tool/flutter_build/9c0b3a9401a090acefff95da10baa049/flutter_assets.d" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.dart_tool/flutter_build/9c0b3a9401a090acefff95da10baa049/kernel_snapshot_program.d" beforeDir="false" afterPath="$PROJECT_DIR$/.dart_tool/flutter_build/9c0b3a9401a090acefff95da10baa049/kernel_snapshot_program.d" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.dart_tool/flutter_build/9c0b3a9401a090acefff95da10baa049/kernel_snapshot_program.stamp" beforeDir="false" afterPath="$PROJECT_DIR$/.dart_tool/flutter_build/9c0b3a9401a090acefff95da10baa049/kernel_snapshot_program.stamp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.dart_tool/hooks_runner/objective_c/1127b110d9/.lock" beforeDir="false" afterPath="$PROJECT_DIR$/.dart_tool/hooks_runner/objective_c/1127b110d9/.lock" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.dart_tool/hooks_runner/objective_c/1127b110d9/hook.dependencies_hash_file.json" beforeDir="false" afterPath="$PROJECT_DIR$/.dart_tool/hooks_runner/objective_c/1127b110d9/hook.dependencies_hash_file.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.dart_tool/hooks_runner/objective_c/1127b110d9/output.json" beforeDir="false" afterPath="$PROJECT_DIR$/.dart_tool/hooks_runner/objective_c/1127b110d9/output.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.dart_tool/hooks_runner/shared/objective_c/.lock" beforeDir="false" afterPath="$PROJECT_DIR$/.dart_tool/hooks_runner/shared/objective_c/.lock" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.dart_tool/package_config.json" beforeDir="false" afterPath="$PROJECT_DIR$/.dart_tool/package_config.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.dart_tool/package_graph.json" beforeDir="false" afterPath="$PROJECT_DIR$/.dart_tool/package_graph.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.flutter-plugins-dependencies" beforeDir="false" afterPath="$PROJECT_DIR$/.flutter-plugins-dependencies" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/main.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/main.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/models/instrument.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/models/instrument.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/providers/monitor_provider.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/providers/monitor_provider.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/screens/connection_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/screens/connection_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/msi_monitor.iml" beforeDir="false" afterPath="$PROJECT_DIR$/msi_monitor.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pubspec.lock" beforeDir="false" afterPath="$PROJECT_DIR$/pubspec.lock" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pubspec.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/pubspec.yaml" afterDir="false" />
-    </list>
+    <list default="true" id="c1cf9af1-a24e-4689-83b5-c723cb57ff1c" name="Changes" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -74,23 +51,23 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "ModuleVcsDetector.initialDetectionPerformed": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.cidr.known.project.marker": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "RunOnceActivity.readMode.enableVisualFormatting": "true",
-    "cf.first.check.clang-format": "false",
-    "cidr.known.project.marker": "true",
-    "dart.analysis.tool.window.visible": "false",
-    "git-widget-placeholder": "main",
-    "io.flutter.project.isFirstOpen": "true",
-    "kotlin-language-version-configured": "true",
-    "last_opened_file_path": "C:/Users/Tomeu/Desktop/msi-medical-monitor",
-    "show.migrate.to.gradle.popup": "false"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.cidr.known.project.marker&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.readMode.enableVisualFormatting&quot;: &quot;true&quot;,
+    &quot;cf.first.check.clang-format&quot;: &quot;false&quot;,
+    &quot;cidr.known.project.marker&quot;: &quot;true&quot;,
+    &quot;dart.analysis.tool.window.visible&quot;: &quot;false&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;io.flutter.project.isFirstOpen&quot;: &quot;true&quot;,
+    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/Users/Tomeu/Desktop/msi-medical-monitor&quot;,
+    &quot;show.migrate.to.gradle.popup&quot;: &quot;false&quot;
   }
-}]]></component>
+}</component>
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
       <changelist id="c1cf9af1-a24e-4689-83b5-c723cb57ff1c" name="Changes" comment="" />
