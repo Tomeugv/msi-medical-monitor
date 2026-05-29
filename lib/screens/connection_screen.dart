@@ -13,20 +13,67 @@ class ConnectionScreen extends StatefulWidget {
 
 class _ConnectionScreenState extends State<ConnectionScreen> {
   bool _hasNavigated = false;
+  bool _waitingForData = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _checkForNavigation();
+  }
+
+  void _checkForNavigation() {
+    final provider = context.read<BLEPeripheralProvider>();
+
+    if (provider.instruments.isNotEmpty && !_hasNavigated) {
+      _navigateToMonitor(provider);
+      return;
+    }
+
+    if (provider.connectedCentralId != null &&
+        !_waitingForData &&
+        !_hasNavigated) {
+      _waitingForData = true;
+      Future.delayed(const Duration(milliseconds: 1500), () {
+        if (!mounted) return;
+
+        if (provider.instruments.isNotEmpty && !_hasNavigated) {
+          _navigateToMonitor(provider);
+        }
+
+        _waitingForData = false;
+      });
+    }
+  }
+
+  void _navigateToMonitor(BLEPeripheralProvider provider) {
+    if (_hasNavigated) return;
+
+    _hasNavigated = true;
+
+    // Asignar callback para volver a ConnectionScreen al finalizar simulación
+    if (provider.onSimulationEnd == null) {
+      provider.onSimulationEnd = () {
+        if (mounted) {
+          Navigator.pop(context);
+          _hasNavigated = false;
+          provider.onSimulationEnd = null;
+        }
+      };
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const MonitorScreen()),
+      );
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Consumer<BLEPeripheralProvider>(
       builder: (context, provider, child) {
-        if (provider.instruments.isNotEmpty && !_hasNavigated) {
-          _hasNavigated = true;
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => const MonitorScreen()),
-            );
-          });
-        }
+        _checkForNavigation();
 
         return Scaffold(
           backgroundColor: Colors.black,

@@ -8,6 +8,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  audioplayers: ^6.5.1
   flutter_reactive_ble: ^5.3.1
   flutter_ble_peripheral: ^2.0.0
   shared_preferences: ^2.2.2
@@ -24,3 +25,6 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/sounds/beep.wav
+    - assets/sounds/cuff.wav

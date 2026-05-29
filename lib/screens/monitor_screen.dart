@@ -1,66 +1,115 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../providers/ble_peripheral_provider.dart';
 import '../models/instrument.dart';
 
-class MonitorScreen extends StatelessWidget {
+class MonitorScreen extends StatefulWidget {
   const MonitorScreen({super.key});
 
   @override
+  State<MonitorScreen> createState() => _MonitorScreenState();
+}
+
+class _MonitorScreenState extends State<MonitorScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _enterFullScreenMode();
+    });
+  }
+
+  @override
+  void dispose() {
+    _exitFullScreenMode();
+    super.dispose();
+  }
+
+  Future<void> _enterFullScreenMode() async {
+    await Future.delayed(Duration.zero);
+    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+  }
+
+  Future<void> _exitFullScreenMode() async {
+    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: false,
-      onPopInvoked: (bool didPop) async {
-        if (didPop) return;
-        final shouldExit = await showDialog<bool>(
-              context: context,
-              builder: (context) => AlertDialog(
-                title: const Text('Salir del Monitor'),
-                content:
-                    const Text('¿Deseas volver a la pantalla de conexión?'),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context, false),
-                    child: const Text('Cancelar'),
+    return Consumer<BLEPeripheralProvider>(
+      builder: (context, provider, child) {
+        final backgroundColor =
+            provider.isDarkTheme ? Colors.black : Colors.white;
+
+        return PopScope(
+          canPop: false,
+          onPopInvoked: (bool didPop) async {
+            if (didPop) return;
+            final shouldExit = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Salir del Monitor'),
+                    content:
+                        const Text('¿Deseas volver a la pantalla de conexión?'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text('Cancelar'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: const Text('Salir'),
+                      ),
+                    ],
                   ),
-                  TextButton(
-                    onPressed: () => Navigator.pop(context, true),
-                    child: const Text('Salir'),
-                  ),
-                ],
-              ),
-            ) ??
-            false;
-        if (shouldExit && context.mounted) {
-          Navigator.pop(context);
-        }
-      },
-      child: Scaffold(
-        backgroundColor: Colors.black,
-        body: Consumer<BLEPeripheralProvider>(
-          builder: (context, provider, child) {
-            final instruments = provider.instruments;
-            if (instruments.isEmpty) {
-              return const Center(
-                child: Text(
-                  'ESPERANDO TELEMETRÍA...',
-                  style: TextStyle(color: Colors.white24, letterSpacing: 4),
-                ),
-              );
+                ) ??
+                false;
+            if (shouldExit && context.mounted) {
+              _exitFullScreenMode();
+              Navigator.pop(context);
             }
-            return _DynamicGrid(instruments: instruments);
           },
-        ),
-      ),
+          child: Scaffold(
+            backgroundColor: backgroundColor,
+            body: Builder(
+              builder: (context) {
+                final instruments = provider.instruments;
+                if (instruments.isEmpty) {
+                  return ColoredBox(color: backgroundColor);
+                }
+                return _DynamicGrid(
+                  instruments: instruments,
+                  isDarkTheme: provider.isDarkTheme,
+                );
+              },
+            ),
+          ),
+        );
+      },
     );
   }
 }
 
 class _DynamicGrid extends StatelessWidget {
   final List<Instrument> instruments;
+  final bool isDarkTheme;
 
-  const _DynamicGrid({required this.instruments});
+  const _DynamicGrid({
+    required this.instruments,
+    required this.isDarkTheme,
+  });
 
   /// Calcula la distribución más equilibrada sin celdas vacías.
   /// Devuelve una lista de enteros donde cada elemento es el número de elementos por fila.
@@ -139,6 +188,7 @@ class _DynamicGrid extends StatelessWidget {
                         valueFontSize: valueFontSize,
                         unitFontSize: unitFontSize,
                         labelFontSize: labelFontSize,
+                        isDarkTheme: isDarkTheme,
                       ),
                     );
                   }).toList(),
@@ -157,21 +207,42 @@ class _InstrumentCard extends StatelessWidget {
   final double valueFontSize;
   final double unitFontSize;
   final double labelFontSize;
+  final bool isDarkTheme;
 
   const _InstrumentCard({
     required this.instrument,
     required this.valueFontSize,
     required this.unitFontSize,
     required this.labelFontSize,
+    required this.isDarkTheme,
   });
+
+  String _calculateMap() {
+    final parts = instrument.value.split('/');
+    if (parts.length != 2) return '';
+
+    final systolic = int.tryParse(parts[0].trim());
+    final diastolic = int.tryParse(parts[1].trim());
+    if (systolic == null || diastolic == null) return '';
+
+    final meanArterialPressure =
+        diastolic + ((systolic - diastolic) / 3).round();
+    return meanArterialPressure.toString();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final isBloodPressure = instrument.type == InstrumentType.bp;
+
     return Container(
       margin: const EdgeInsets.all(2),
       decoration: BoxDecoration(
-        color: Colors.black,
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
+        color: isDarkTheme ? Colors.black : Colors.white,
+        border: Border.all(
+          color: isDarkTheme
+              ? Colors.white.withOpacity(0.05)
+              : Colors.black.withOpacity(0.1),
+        ),
       ),
       child: Stack(
         children: [
@@ -183,7 +254,7 @@ class _InstrumentCard extends StatelessWidget {
                   center: Alignment.center,
                   radius: 0.8,
                   colors: [
-                    instrument.color.withOpacity(0.03),
+                    instrument.color.withOpacity(isDarkTheme ? 0.03 : 0.02),
                     Colors.transparent,
                   ],
                 ),
@@ -197,7 +268,9 @@ class _InstrumentCard extends StatelessWidget {
             child: Text(
               instrument.label.toUpperCase(),
               style: GoogleFonts.jetBrainsMono(
-                color: Colors.white.withOpacity(0.4),
+                color: isDarkTheme
+                    ? Colors.white.withOpacity(0.4)
+                    : Colors.black.withOpacity(0.6),
                 fontSize: labelFontSize.clamp(8.0, 20.0),
                 letterSpacing: 2,
                 fontWeight: FontWeight.w500,
@@ -225,11 +298,26 @@ class _InstrumentCard extends StatelessWidget {
                 Text(
                   instrument.unit.toUpperCase(),
                   style: GoogleFonts.jetBrainsMono(
-                    color: Colors.white.withOpacity(0.2),
+                    color: isDarkTheme
+                        ? instrument.color.withOpacity(0.7)
+                        : instrument.color.withOpacity(0.9),
                     fontSize: unitFontSize.clamp(10.0, 24.0),
                     letterSpacing: 4,
                   ),
                 ),
+                if (isBloodPressure) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'PAM ${_calculateMap()}',
+                    style: GoogleFonts.jetBrainsMono(
+                      color: isDarkTheme
+                          ? instrument.color.withOpacity(0.6)
+                          : instrument.color.withOpacity(0.8),
+                      fontSize: unitFontSize.clamp(8.0, 18.0),
+                      letterSpacing: 2,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:ble_peripheral/ble_peripheral.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -10,11 +11,31 @@ class BLEPeripheralProvider with ChangeNotifier {
   bool _isAdvertising = false;
   bool get isAdvertising => _isAdvertising;
 
+  bool _isDarkTheme = true;
+  bool get isDarkTheme => _isDarkTheme;
+
+  void setTheme(bool dark) {
+    if (_isDarkTheme != dark) {
+      _isDarkTheme = dark;
+      notifyListeners();
+    }
+  }
+
   List<Instrument> _instruments = [];
   List<Instrument> get instruments => _instruments;
 
   String? _connectedCentralId;
   String? get connectedCentralId => _connectedCentralId;
+
+  // UI callback fired when dashboard explicitly signals simulation end.
+  VoidCallback? onSimulationEnd;
+
+  final AudioPlayer _audioPlayer = AudioPlayer();
+  final AudioPlayer _beepPlayer = AudioPlayer();
+  final AudioPlayer _cuffPlayer = AudioPlayer();
+  String? _lastTempValue;
+  bool _isPlayingCuffSound = false;
+  Instrument? _pendingBPInstrument;
 
   final String serviceUuid = "0000ffe0-0000-1000-8000-00805f9b34fb";
   final String characteristicUuid = "0000ffe1-0000-1000-8000-00805f9b34fb";
@@ -148,6 +169,9 @@ class BLEPeripheralProvider with ChangeNotifier {
       _isAdvertising = true;
       _buffer.clear();
       _connectedCentralId = null;
+      _lastTempValue = null;
+      _pendingBPInstrument = null;
+      _isPlayingCuffSound = false;
       notifyListeners();
       debugPrint("✅ Publicando como MSI-MONITOR");
     } catch (e) {
@@ -165,6 +189,9 @@ class BLEPeripheralProvider with ChangeNotifier {
       _isAdvertising = false;
       _connectedCentralId = null;
       _buffer.clear();
+      _lastTempValue = null;
+      _pendingBPInstrument = null;
+      _isPlayingCuffSound = false;
       notifyListeners();
       debugPrint("Publicidad detenida");
     } catch (e) {
@@ -202,9 +229,90 @@ class BLEPeripheralProvider with ChangeNotifier {
       debugPrint("📦 JSON extraído (${jsonString.length} chars)");
       try {
         final List<dynamic> jsonList = json.decode(jsonString);
-        _instruments = jsonList.map((j) => Instrument.fromJson(j)).toList();
-        debugPrint("✅ Actualizados ${_instruments.length} instrumentos");
-        notifyListeners();
+
+        if (jsonList.isNotEmpty &&
+            jsonList[0] is Map<String, dynamic> &&
+            jsonList[0]['type'] == 'set_theme') {
+          final theme = jsonList[0]['theme'];
+          setTheme(theme == 'dark');
+          _buffer.clear();
+          _buffer.write(full.substring(end + 1));
+          return;
+        }
+
+        final updatedNonBpInstruments = <Instrument>[];
+        Instrument? pendingBpInstrument;
+
+        for (final item in jsonList) {
+          if (item is! Map<String, dynamic>) {
+            continue;
+          }
+
+          final instrument = Instrument.fromJson(item);
+
+          if (instrument.type == InstrumentType.bp) {
+            pendingBpInstrument = instrument;
+            continue;
+          }
+
+          if (instrument.type == InstrumentType.temp) {
+            final newTempValue = instrument.value;
+            if (newTempValue.isNotEmpty &&
+                _lastTempValue != null &&
+                newTempValue != _lastTempValue) {
+              _playBeepSound();
+            }
+            if (newTempValue.isNotEmpty) {
+              _lastTempValue = newTempValue;
+            }
+          }
+
+          updatedNonBpInstruments.add(instrument);
+        }
+
+        if (updatedNonBpInstruments.isNotEmpty) {
+          _instruments =
+              _mergeInstruments(_instruments, updatedNonBpInstruments);
+          debugPrint(
+              "✅ Actualizados ${_instruments.length} instrumentos no-BP");
+          notifyListeners();
+        }
+
+        if (pendingBpInstrument != null) {
+          _pendingBPInstrument = pendingBpInstrument;
+          if (!_isPlayingCuffSound) {
+            _playCuffSoundAndUpdateBP();
+          }
+        }
+
+        // Detectar comando de fin de simulación
+        if (jsonList.isNotEmpty &&
+            jsonList[0] is Map<String, dynamic> &&
+            jsonList[0]['type'] == 'end_simulation') {
+          debugPrint("🏁 Comando de fin de simulación recibido");
+          _instruments = [];
+          _lastTempValue = null;
+          _pendingBPInstrument = null;
+          _isPlayingCuffSound = false;
+          _cuffPlayer.stop();
+          notifyListeners();
+          if (onSimulationEnd != null) {
+            onSimulationEnd!();
+          }
+          _buffer.clear();
+          _buffer.write(full.substring(end + 1));
+          return;
+        }
+
+        if (pendingBpInstrument == null && updatedNonBpInstruments.isEmpty) {
+          final parsedInstruments = jsonList
+              .whereType<Map<String, dynamic>>()
+              .map((j) => Instrument.fromJson(j))
+              .toList();
+          _instruments = parsedInstruments;
+          debugPrint("✅ Actualizados ${_instruments.length} instrumentos");
+          notifyListeners();
+        }
       } catch (e) {
         debugPrint("❌ Error parseando JSON: $e");
       }
@@ -216,10 +324,61 @@ class BLEPeripheralProvider with ChangeNotifier {
     }
   }
 
+  Future<void> _playBeepSound() async {
+    try {
+      await _beepPlayer.play(AssetSource('sounds/beep.wav'));
+    } catch (e) {
+      debugPrint("❌ Error al reproducir beep: $e");
+    }
+  }
+
+  List<Instrument> _mergeInstruments(
+    List<Instrument> current,
+    List<Instrument> updates,
+  ) {
+    final merged = List<Instrument>.from(current);
+
+    for (final instrument in updates) {
+      final index = merged.indexWhere((item) => item.id == instrument.id);
+      if (index == -1) {
+        merged.add(instrument);
+      } else {
+        merged[index] = instrument;
+      }
+    }
+
+    return merged;
+  }
+
+  Future<void> _playCuffSoundAndUpdateBP() async {
+    if (_isPlayingCuffSound) return;
+
+    _isPlayingCuffSound = true;
+    try {
+      await _cuffPlayer.play(AssetSource('sounds/cuff.wav'));
+      await _cuffPlayer.onPlayerComplete.first;
+    } catch (e) {
+      debugPrint("❌ Error al reproducir el sonido del manguito: $e");
+    } finally {
+      final pending = _pendingBPInstrument;
+      _pendingBPInstrument = null;
+
+      if (pending != null) {
+        _instruments = _mergeInstruments(_instruments, [pending]);
+        notifyListeners();
+      }
+
+      _isPlayingCuffSound = false;
+    }
+  }
+
   @override
   void dispose() {
     // No detenemos publicidad al cerrar la app? El usuario puede decidir,
     // pero para limpiar recursos lo hacemos.
+    _audioPlayer.dispose();
+    _beepPlayer.dispose();
+    _cuffPlayer.dispose();
     BlePeripheral.stopAdvertising();
     super.dispose();
   }
