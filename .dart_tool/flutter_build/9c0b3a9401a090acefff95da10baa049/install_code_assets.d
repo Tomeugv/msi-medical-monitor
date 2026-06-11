@@ -1,0 +1,1 @@
+ C:\\Users\\Tomeu\\Desktop\\msi-medical-monitor\\.dart_tool\\flutter_build\\9c0b3a9401a090acefff95da10baa049\\native_assets.json: 

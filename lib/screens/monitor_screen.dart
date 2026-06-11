@@ -1,7 +1,11 @@
+import 'dart:async';
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+
 import '../providers/ble_peripheral_provider.dart';
 import '../models/instrument.dart';
 
@@ -16,6 +20,7 @@ class _MonitorScreenState extends State<MonitorScreen> {
   @override
   void initState() {
     super.initState();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _enterFullScreenMode();
     });
@@ -29,7 +34,9 @@ class _MonitorScreenState extends State<MonitorScreen> {
 
   Future<void> _enterFullScreenMode() async {
     await Future.delayed(Duration.zero);
+
     await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+
     await SystemChrome.setPreferredOrientations([
       DeviceOrientation.landscapeLeft,
       DeviceOrientation.landscapeRight,
@@ -38,6 +45,7 @@ class _MonitorScreenState extends State<MonitorScreen> {
 
   Future<void> _exitFullScreenMode() async {
     await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+
     await SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
@@ -57,6 +65,7 @@ class _MonitorScreenState extends State<MonitorScreen> {
           canPop: false,
           onPopInvoked: (bool didPop) async {
             if (didPop) return;
+
             final shouldExit = await showDialog<bool>(
                   context: context,
                   builder: (context) => AlertDialog(
@@ -76,6 +85,7 @@ class _MonitorScreenState extends State<MonitorScreen> {
                   ),
                 ) ??
                 false;
+
             if (shouldExit && context.mounted) {
               _exitFullScreenMode();
               Navigator.pop(context);
@@ -86,9 +96,11 @@ class _MonitorScreenState extends State<MonitorScreen> {
             body: Builder(
               builder: (context) {
                 final instruments = provider.instruments;
+
                 if (instruments.isEmpty) {
                   return ColoredBox(color: backgroundColor);
                 }
+
                 return _DynamicGrid(
                   instruments: instruments,
                   isDarkTheme: provider.isDarkTheme,
@@ -111,8 +123,6 @@ class _DynamicGrid extends StatelessWidget {
     required this.isDarkTheme,
   });
 
-  /// Calcula la distribución más equilibrada sin celdas vacías.
-  /// Devuelve una lista de enteros donde cada elemento es el número de elementos por fila.
   List<int> _computeRowDistribution(int total, bool isLandscape) {
     if (total == 0) return [];
     if (total == 1) return [1];
@@ -127,25 +137,28 @@ class _DynamicGrid extends StatelessWidget {
     if (total == 10) return isLandscape ? [5, 5] : [2, 2, 2, 2, 2];
     if (total == 11) return isLandscape ? [6, 5] : [2, 2, 2, 2, 3];
     if (total == 12) return isLandscape ? [6, 6] : [2, 2, 2, 2, 2, 2];
-    // Para más elementos, usamos un algoritmo simple: intentamos 4 columnas en horizontal
+
     if (isLandscape) {
-      int cols = 4;
-      int rows = (total / cols).ceil();
-      List<int> distribution = List.filled(rows, cols);
-      int remainder = total % cols;
+      const cols = 4;
+      final rows = (total / cols).ceil();
+      final distribution = List<int>.filled(rows, cols);
+      final remainder = total % cols;
+
       if (remainder != 0) {
         distribution[rows - 1] = remainder;
       }
-      return distribution;
-    } else {
-      // Vertical: siempre 2 columnas, pero la última puede tener 1
-      int rows = (total / 2).ceil();
-      List<int> distribution = List.filled(rows, 2);
-      if (total % 2 != 0) {
-        distribution[rows - 1] = 1;
-      }
+
       return distribution;
     }
+
+    final rows = (total / 2).ceil();
+    final distribution = List<int>.filled(rows, 2);
+
+    if (total % 2 != 0) {
+      distribution[rows - 1] = 1;
+    }
+
+    return distribution;
   }
 
   @override
@@ -162,16 +175,17 @@ class _DynamicGrid extends StatelessWidget {
         final totalHeight = constraints.maxHeight;
         final rowHeight = totalHeight / rows;
 
-        // Construir las filas según la distribución
-        int startIndex = 0;
+        var startIndex = 0;
+
         return Column(
           children: List.generate(rows, (rowIdx) {
             final itemsInRow = rowDistribution[rowIdx];
+
             final rowInstruments =
                 instruments.sublist(startIndex, startIndex + itemsInRow);
+
             startIndex += itemsInRow;
 
-            // Calcular tamaño de fuente base según la altura de la fila
             final baseFontSize = (rowHeight * 0.4).clamp(24.0, 100.0);
             final valueFontSize = baseFontSize;
             final unitFontSize = baseFontSize * 0.3;
@@ -202,7 +216,7 @@ class _DynamicGrid extends StatelessWidget {
   }
 }
 
-class _InstrumentCard extends StatelessWidget {
+class _InstrumentCard extends StatefulWidget {
   final Instrument instrument;
   final double valueFontSize;
   final double unitFontSize;
@@ -217,36 +231,165 @@ class _InstrumentCard extends StatelessWidget {
     required this.isDarkTheme,
   });
 
+  @override
+  State<_InstrumentCard> createState() => _InstrumentCardState();
+}
+
+class _InstrumentCardState extends State<_InstrumentCard> {
+  static const List<int> _heartRateOffsets = [0, 1, 0, -1, 0];
+
+  final Random _random = Random();
+
+  Timer? _heartRateVisualTimer;
+  var _heartRateOffsetIndex = 0;
+
+  bool get _isHeartRate => _isHeartRateInstrument(widget.instrument);
+
+  @override
+  void initState() {
+    super.initState();
+    _configureHeartRateVisualTimer();
+  }
+
+  @override
+  void didUpdateWidget(covariant _InstrumentCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    final wasHeartRate = _isHeartRateInstrument(oldWidget.instrument);
+    final isHeartRate = _isHeartRateInstrument(widget.instrument);
+
+    /*
+     * No reiniciamos la oscilación por cambios de valor.
+     * Si el usuario sube/baja manualmente la FC, mantenemos el mismo ritmo visual
+     * y solo cambiamos la base numérica.
+     */
+    if (oldWidget.instrument.id != widget.instrument.id ||
+        oldWidget.instrument.type != widget.instrument.type ||
+        oldWidget.instrument.unit != widget.instrument.unit ||
+        wasHeartRate != isHeartRate) {
+      _configureHeartRateVisualTimer();
+    }
+  }
+
+  @override
+  void dispose() {
+    _heartRateVisualTimer?.cancel();
+    super.dispose();
+  }
+
+  bool _isHeartRateInstrument(Instrument instrument) {
+    if (instrument.type != InstrumentType.hr) return false;
+
+    final id = instrument.id.toLowerCase();
+    final label = instrument.label.toLowerCase();
+    final unit = instrument.unit.toLowerCase();
+
+    return id.contains('hr') ||
+        id.contains('fc') ||
+        label == 'fc' ||
+        label.contains('heart') ||
+        unit == 'lpm' ||
+        unit == 'bpm';
+  }
+
+  void _configureHeartRateVisualTimer() {
+    _heartRateVisualTimer?.cancel();
+    _heartRateVisualTimer = null;
+    _heartRateOffsetIndex = 0;
+
+    if (!_isHeartRate || _parseHeartRate(widget.instrument.value) == null) {
+      return;
+    }
+
+    _scheduleNextHeartRateVisualTick();
+  }
+
+  void _scheduleNextHeartRateVisualTick() {
+    _heartRateVisualTimer?.cancel();
+
+    if (!_isHeartRate || _parseHeartRate(widget.instrument.value) == null) {
+      return;
+    }
+
+    /*
+     * Oscilación más lenta y menos robótica.
+     * Cada cambio tarda entre 2.4s y 4.4s aproximadamente.
+     */
+    final delayMs = 2400 + _random.nextInt(2000);
+
+    _heartRateVisualTimer = Timer(Duration(milliseconds: delayMs), () {
+      if (!mounted) return;
+
+      setState(() {
+        _heartRateOffsetIndex =
+            (_heartRateOffsetIndex + 1) % _heartRateOffsets.length;
+      });
+
+      _scheduleNextHeartRateVisualTick();
+    });
+  }
+
+  int? _parseHeartRate(String value) {
+    final match = RegExp(r'\d+').firstMatch(value);
+
+    if (match == null) return null;
+
+    return int.tryParse(match.group(0)!);
+  }
+
+  String _displayValue() {
+    if (!_isHeartRate) return widget.instrument.value;
+
+    final baseHeartRate = _parseHeartRate(widget.instrument.value);
+
+    if (baseHeartRate == null) return widget.instrument.value;
+
+    final offset = _heartRateOffsets[_heartRateOffsetIndex];
+
+    return (baseHeartRate + offset).toString();
+  }
+
+  String _displayUnit() {
+    final unit = widget.instrument.unit.trim();
+
+    if (unit.toLowerCase() == 'mmhg') return 'mmHg';
+
+    return unit.toUpperCase();
+  }
+
   String _calculateMap() {
-    final parts = instrument.value.split('/');
+    final parts = widget.instrument.value.split('/');
+
     if (parts.length != 2) return '';
 
     final systolic = int.tryParse(parts[0].trim());
     final diastolic = int.tryParse(parts[1].trim());
+
     if (systolic == null || diastolic == null) return '';
 
     final meanArterialPressure =
         diastolic + ((systolic - diastolic) / 3).round();
+
     return meanArterialPressure.toString();
   }
 
   @override
   Widget build(BuildContext context) {
-    final isBloodPressure = instrument.type == InstrumentType.bp;
+    final isBloodPressure = widget.instrument.type == InstrumentType.bp;
+    final mapValue = isBloodPressure ? _calculateMap() : '';
 
     return Container(
       margin: const EdgeInsets.all(2),
       decoration: BoxDecoration(
-        color: isDarkTheme ? Colors.black : Colors.white,
+        color: widget.isDarkTheme ? Colors.black : Colors.white,
         border: Border.all(
-          color: isDarkTheme
+          color: widget.isDarkTheme
               ? Colors.white.withOpacity(0.05)
               : Colors.black.withOpacity(0.1),
         ),
       ),
       child: Stack(
         children: [
-          // Gradiente de fondo
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
@@ -254,30 +397,29 @@ class _InstrumentCard extends StatelessWidget {
                   center: Alignment.center,
                   radius: 0.8,
                   colors: [
-                    instrument.color.withOpacity(isDarkTheme ? 0.03 : 0.02),
+                    widget.instrument.color
+                        .withOpacity(widget.isDarkTheme ? 0.03 : 0.02),
                     Colors.transparent,
                   ],
                 ),
               ),
             ),
           ),
-          // Etiqueta superior
           Positioned(
             top: 12,
             left: 12,
             child: Text(
-              instrument.label.toUpperCase(),
+              widget.instrument.label.toUpperCase(),
               style: GoogleFonts.jetBrainsMono(
-                color: isDarkTheme
-                    ? Colors.white.withOpacity(0.4)
-                    : Colors.black.withOpacity(0.6),
-                fontSize: labelFontSize.clamp(8.0, 20.0),
+                color: widget.isDarkTheme
+                    ? Colors.white.withOpacity(0.68)
+                    : Colors.black.withOpacity(0.78),
+                fontSize: widget.labelFontSize.clamp(8.0, 20.0),
                 letterSpacing: 2,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
-          // Valor y unidad centrados
           Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -285,43 +427,43 @@ class _InstrumentCard extends StatelessWidget {
                 FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(
-                    instrument.value,
+                    _displayValue(),
                     style: GoogleFonts.jetBrainsMono(
-                      color: instrument.color,
-                      fontSize: valueFontSize,
+                      color: widget.instrument.color,
+                      fontSize: widget.valueFontSize,
                       fontWeight: FontWeight.w500,
                       letterSpacing: -5,
                     ),
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  instrument.unit.toUpperCase(),
-                  style: GoogleFonts.jetBrainsMono(
-                    color: isDarkTheme
-                        ? instrument.color.withOpacity(0.7)
-                        : instrument.color.withOpacity(0.9),
-                    fontSize: unitFontSize.clamp(10.0, 24.0),
-                    letterSpacing: 4,
-                  ),
-                ),
-                if (isBloodPressure) ...[
-                  const SizedBox(height: 8),
+                if (isBloodPressure && mapValue.isNotEmpty) ...[
+                  const SizedBox(height: 2),
                   Text(
-                    'PAM ${_calculateMap()}',
+                    '($mapValue)',
                     style: GoogleFonts.jetBrainsMono(
-                      color: isDarkTheme
-                          ? instrument.color.withOpacity(0.6)
-                          : instrument.color.withOpacity(0.8),
-                      fontSize: unitFontSize.clamp(8.0, 18.0),
+                      color: widget.isDarkTheme
+                          ? widget.instrument.color.withOpacity(0.75)
+                          : widget.instrument.color.withOpacity(0.9),
+                      fontSize: widget.unitFontSize.clamp(10.0, 24.0),
                       letterSpacing: 2,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ],
+                const SizedBox(height: 4),
+                Text(
+                  _displayUnit(),
+                  style: GoogleFonts.jetBrainsMono(
+                    color: widget.isDarkTheme
+                        ? widget.instrument.color.withOpacity(0.7)
+                        : widget.instrument.color.withOpacity(0.9),
+                    fontSize: widget.unitFontSize.clamp(10.0, 24.0),
+                    letterSpacing: 4,
+                  ),
+                ),
               ],
             ),
           ),
-          // Icono decorativo
           const Positioned(
             bottom: 12,
             right: 12,
