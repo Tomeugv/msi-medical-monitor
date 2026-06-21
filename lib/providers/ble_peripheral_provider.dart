@@ -69,7 +69,6 @@ class BLEPeripheralProvider with ChangeNotifier {
 
   Future<void> _initAndStartAdvertising() async {
     await _initBle();
-
     await Future.delayed(const Duration(milliseconds: 500));
 
     if (!_isAdvertising) {
@@ -425,12 +424,7 @@ class BLEPeripheralProvider with ChangeNotifier {
 
     _lastBpValue = newValue;
 
-    /*
-     * Caso 1:
-     * PANI/PAI estaba oculto y acaba de aparecer.
-     * Aquí sí tiene sentido reproducir el sonido del manguito antes de mostrarlo.
-     */
-    if (!wasAlreadyVisible) {
+    if (!wasAlreadyVisible || valueChanged) {
       _pendingBPInstrument = instrument;
 
       if (!_isPlayingCuffSound) {
@@ -440,29 +434,6 @@ class BLEPeripheralProvider with ChangeNotifier {
       return;
     }
 
-    /*
-     * Caso 2:
-     * PANI/PAI ya estaba visible pero ha cambiado su valor real.
-     * Aquí también reproducimos el sonido, porque simula una nueva toma.
-     */
-    if (valueChanged) {
-      _pendingBPInstrument = instrument;
-
-      if (!_isPlayingCuffSound) {
-        unawaited(_playCuffSoundAndUpdateBP());
-      }
-
-      return;
-    }
-
-    /*
-     * Caso 3:
-     * PANI/PAI ya estaba visible y el valor NO ha cambiado.
-     * Esto ocurre cuando se actualiza SpO2/FR, FC, glucemia, etc. y la app
-     * principal manda el estado completo.
-     *
-     * En este caso NO debe sonar la presión.
-     */
     _instruments[currentIndex] = instrument;
   }
 
@@ -638,6 +609,8 @@ class BLEPeripheralProvider with ChangeNotifier {
   }
 
   Future<void> _playHeartRateBeepSound() async {
+    if (_isPlayingCuffSound) return;
+
     try {
       await _heartRateBeepPlayer.stop();
       await _heartRateBeepPlayer.setVolume(_heartRateBeepVolume);
@@ -682,10 +655,21 @@ class BLEPeripheralProvider with ChangeNotifier {
     _isPlayingCuffSound = true;
 
     try {
+      // Mientras suena el manguito, evitamos que el beep de FC lo corte o lo
+      // haga perder el evento de finalización en algunos teléfonos.
+      await _heartRateBeepPlayer.stop();
+
       await _cuffPlayer.stop();
       await _cuffPlayer.setVolume(_cuffVolume);
       await _cuffPlayer.play(AssetSource('sounds/cuff.wav'));
-      await _cuffPlayer.onPlayerComplete.first;
+
+      // Fallback: si Android/audioplayers no emite onPlayerComplete porque otro
+      // sonido interrumpe el cuff, igualmente mostramos PANI/PAI tras un tiempo
+      // razonable para no dejar el módulo bloqueado para siempre.
+      await Future.any([
+        _cuffPlayer.onPlayerComplete.first,
+        Future.delayed(const Duration(seconds: 9)),
+      ]);
     } catch (e) {
       debugPrint("❌ Error al reproducir el sonido del manguito: $e");
     } finally {
